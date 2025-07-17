@@ -1,23 +1,26 @@
-// src/Components/FieldRenderer.tsx
-
-import React from "react";
+import React, { useState } from "react";
 import type { FieldConfig, FieldOption } from "../types/types";
+import FieldRenderer from "./FieldRenderer";
+import { useTheme } from "./ThemeContext";
+import GridLayout from "react-grid-layout";
 
 interface FieldRendererProps {
   field: FieldConfig;
-  value?: string | string[];
-  onChange: (value: string | string[]) => void;
-  error?: boolean;
+  value?: string | string[] | Record<string, any>;
+  onChange: (value: string | string[] | Record<string, any>) => void;
+  error?: boolean | Record<string, boolean>;
   darkMode?: boolean;
 }
 
-const FieldRenderer: React.FC<FieldRendererProps> = ({
+const Renderer: React.FC<FieldRendererProps> = ({
   field,
   value,
   onChange,
   error = false,
 }) => {
+  const { theme } = useTheme();
   const { label } = field;
+  const [isExpanded, setIsExpanded] = useState(true);
 
   const renderError = () =>
     error && <small className="text-danger">This field is required.</small>;
@@ -30,13 +33,15 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({
       return (
         <div className="mb-3">
           <h4
+            className={`mb-3 ${theme === "dark" ? "text-white" : ""}`}
             contentEditable
             suppressContentEditableWarning
             onBlur={(e) => onChange(e.currentTarget.textContent || "")}
           >
-            {value || label}
+            {(typeof value === "string" && value) || field.label || "Header"}
           </h4>
-          <input type="hidden" value={value || label} />
+          <input type="hidden" value={typeof value === "string" ? value : ""} />
+          {renderError()}
         </div>
       );
 
@@ -44,14 +49,17 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({
       return (
         <div className="mb-3">
           <label
-            className="form-label fw-bold"
+            className={`form-label fw-bold ${
+              theme === "dark" ? "text-white" : ""
+            }`}
             contentEditable
             suppressContentEditableWarning
             onBlur={(e) => onChange(e.currentTarget.textContent || "")}
           >
-            {value || label}
+            {(typeof value === "string" && value) || field.label || "Label"}
           </label>
-          <input type="hidden" value={value || label} />
+          <input type="hidden" value={typeof value === "string" ? value : ""} />
+          {renderError()}
         </div>
       );
 
@@ -59,13 +67,15 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({
       return (
         <div className="mb-3">
           <p
+            className={theme === "dark" ? "text-white" : ""}
             contentEditable
             suppressContentEditableWarning
             onBlur={(e) => onChange(e.currentTarget.textContent || "")}
           >
-            {value || label}
+            {(typeof value === "string" && value) || field.label || "Paragraph"}
           </p>
-          <input type="hidden" value={value || label} />
+          <input type="hidden" value={typeof value === "string" ? value : ""} />
+          {renderError()}
         </div>
       );
 
@@ -97,6 +107,22 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({
             value={typeof value === "string" ? value : ""}
             onChange={(e) => onChange(e.target.value)}
             style={{ minHeight: "40px" }}
+          />
+          {renderError()}
+        </div>
+      );
+
+    case "date":
+      return (
+        <div className="mb-3">
+          <label>{label}</label>
+          <input
+            type="date"
+            className={baseInputClass}
+            value={typeof value === "string" ? value : ""}
+            onChange={(e) => onChange(e.target.value)}
+            style={{ minHeight: "40px" }}
+            max={new Date().toISOString().split("T")[0]} // prevent future dates
           />
           {renderError()}
         </div>
@@ -165,7 +191,7 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({
                 type="radio"
                 name={`field-${field.id}`}
                 value={opt.value ?? ""}
-                checked={value === opt.value}
+                checked={typeof value === "string" && value === opt.value}
                 onChange={() => onChange(opt.value ?? "")}
               />
               <label className="form-check-label text-wrap">
@@ -211,9 +237,85 @@ const FieldRenderer: React.FC<FieldRendererProps> = ({
         </div>
       );
 
+    case "section":
+      return (
+        <div className="mb-3 p-3 border rounded">
+          <div className="d-flex justify-content-between align-items-center">
+            <h5>{label}</h5>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-secondary"
+              onClick={() => setIsExpanded(!isExpanded)}
+            >
+              {isExpanded ? "−" : "+"}
+            </button>
+          </div>
+
+          {isExpanded && (
+            <div
+              className={`p-2 rounded ${
+                theme === "dark" ? "bg-dark-subtle" : "bg-light"
+              }`}
+            >
+              <GridLayout
+                className="layout"
+                cols={12}
+                rowHeight={5}
+                width={920}
+                layout={field.layout || []}
+                isDraggable
+                isResizable
+                onLayoutChange={(newLayout) =>
+                  onChange({ ...field, layout: newLayout })
+                }
+              >
+                {(field.fields || []).map((nestedField) => {
+                  const fieldLayoutItem = field.layout?.find(
+                    (item) => item.i === nestedField.id
+                  ) || {
+                    i: nestedField.id,
+                    x: 0,
+                    y: Infinity,
+                    w: 6,
+                    h: 8,
+                  };
+
+                  return (
+                    <div key={nestedField.id} data-grid={fieldLayoutItem}>
+                      <FieldRenderer
+                        field={nestedField}
+                        value={
+                          typeof value === "object" && !Array.isArray(value)
+                            ? value[nestedField.id]
+                            : ""
+                        }
+                        onChange={(val) =>
+                          onChange({
+                            ...(typeof value === "object" &&
+                            !Array.isArray(value)
+                              ? value
+                              : {}),
+                            [nestedField.id]: val,
+                          })
+                        }
+                        error={
+                          typeof error === "object"
+                            ? error[nestedField.id]
+                            : false
+                        }
+                      />
+                    </div>
+                  );
+                })}
+              </GridLayout>
+            </div>
+          )}
+        </div>
+      );
+
     default:
       return null;
   }
 };
 
-export default FieldRenderer;
+export default Renderer;

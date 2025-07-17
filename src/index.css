@@ -62,3 +62,38 @@ body.dark-mode .btn-outline-light:hover {
   cursor: move;
   user-select: none;
 }
+
+select.form-control,
+input.form-control {
+  background-color: var(--bs-body-bg) !important;
+  color: var(--bs-body-color) !important;
+}
+
+.dark-mode select.form-control,
+.dark-mode input.form-control {
+  background-color: #1e1e1e !important;
+  color: #f1f1f1 !important;
+}
+.bg-dark-subtle {
+  background-color: #2e2e2e !important;
+}
+
+
+.mobile-view {
+  flex-direction: column;
+  align-items: center;
+  padding: 0 1rem;
+}
+
+.mobile-view .toolbox-sidebar {
+  display: none;
+}
+
+.mobile-view .container {
+  width: 100%;
+  max-width: 400px;
+}
+
+.mobile-view .form-preview {
+  width: 100%;
+}

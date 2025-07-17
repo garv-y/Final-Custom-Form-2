@@ -43,7 +43,7 @@ export const getTemplateFields = (templateId: string): Field[] => {
       { id: "1", type: "header", label: "Registration Form", required: false },
       { id: "2", type: "text", label: "Full Name", required: true },
       { id: "3", type: "text", label: "Email Address", required: true },
-      { id: "4", type: "number", label: "Age", required: false },
+      { id: "4", type: "date", label: "Date of Birth", required: true },
       {
         id: "5",
         type: "dropdown",

@@ -151,7 +151,10 @@ const Trash: React.FC = () => {
                 <div className="card-body">
                   <h5>{form.title}</h5>
                   <p className="card-text">
-                    Deleted on: {new Date(form.timestamp).toLocaleString()}
+                    Deleted on:{" "}
+                    {new Date(
+                      form.deletedAt || form.timestamp
+                    ).toLocaleString()}
                   </p>
                   <div className="d-flex justify-content-between mt-3">
                     <button

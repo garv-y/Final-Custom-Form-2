@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTheme } from "./ThemeContext";
+import RecentFormCard from "./RecentFormCard";
 
-// Type definition for recent form entries
 interface RecentForm {
   id: number;
   title: string;
@@ -10,7 +10,6 @@ interface RecentForm {
   isDeleted?: boolean;
 }
 
-// Type definition for saved templates
 interface SavedTemplate {
   id: string;
   title: string;
@@ -18,7 +17,6 @@ interface SavedTemplate {
   isDeleted?: boolean;
 }
 
-// Type definition for submitted templates
 interface SubmittedTemplate {
   id: string;
   title: string;
@@ -29,27 +27,26 @@ interface SubmittedTemplate {
 }
 
 const Dashboard: React.FC = () => {
-  // Access theme and theme toggle from context
   const { theme, toggleTheme } = useTheme();
 
-  // State hooks for storing different categories of form data
   const [recentForms, setRecentForms] = useState<RecentForm[]>([]);
   const [savedTemplates, setSavedTemplates] = useState<SavedTemplate[]>([]);
   const [submittedTemplates, setSubmittedTemplates] = useState<
     SubmittedTemplate[]
   >([]);
 
-  // Load data from localStorage when the component mounts
   useEffect(() => {
-    // Load recent forms (excluding soft-deleted ones)
-    const forms = JSON.parse(localStorage.getItem("recentForms") || "[]");
-    setRecentForms(forms.filter((f: RecentForm) => !f.isDeleted));
+    const forms = (
+      JSON.parse(localStorage.getItem("recentForms") || "[]") as any[]
+    ).map((f) => ({
+      ...f,
+      id: Number(f.id),
+    }));
+    setRecentForms(forms.filter((f) => !f.isDeleted));
 
-    // Load saved templates (excluding soft-deleted ones)
     const templates = JSON.parse(localStorage.getItem("templates") || "[]");
     setSavedTemplates(templates.filter((t: SavedTemplate) => !t.isDeleted));
 
-    // Load submitted templates (excluding soft-deleted ones)
     const submissions = JSON.parse(
       localStorage.getItem("submittedTemplates") || "[]"
     );
@@ -58,33 +55,35 @@ const Dashboard: React.FC = () => {
     );
   }, []);
 
-  // Soft-delete a recent form by setting `isDeleted` to true
   const softDeleteForm = (id: number) => {
-    const forms = JSON.parse(localStorage.getItem("recentForms") || "[]");
-    const updated = forms.map((f: RecentForm) =>
-      f.id === id ? { ...f, isDeleted: true } : f
+    const forms = (
+      JSON.parse(localStorage.getItem("recentForms") || "[]") as any[]
+    ).map((f) => ({
+      ...f,
+      id: Number(f.id),
+    }));
+    const updated = forms.map((f) =>
+      f.id === id ? { ...f, isDeleted: true, deletedAt: Date.now() } : f
     );
     localStorage.setItem("recentForms", JSON.stringify(updated));
-    setRecentForms(updated.filter((f: RecentForm) => !f.isDeleted));
+    setRecentForms(updated.filter((f) => !f.isDeleted));
   };
 
-  // Soft-delete a saved template
   const softDeleteTemplate = (id: string) => {
     const templates = JSON.parse(localStorage.getItem("templates") || "[]");
     const updated = templates.map((t: SavedTemplate) =>
-      t.id === id ? { ...t, isDeleted: true } : t
+      t.id === id ? { ...t, isDeleted: true, deletedAt: Date.now() } : t
     );
     localStorage.setItem("templates", JSON.stringify(updated));
     setSavedTemplates(updated.filter((t: SavedTemplate) => !t.isDeleted));
   };
 
-  // Soft-delete a submitted template
   const softDeleteSubmission = (id: string) => {
     const submissions = JSON.parse(
       localStorage.getItem("submittedTemplates") || "[]"
     );
     const updated = submissions.map((s: SubmittedTemplate) =>
-      s.id === id ? { ...s, isDeleted: true } : s
+      s.id === id ? { ...s, isDeleted: true, deletedAt: Date.now() } : s
     );
     localStorage.setItem("submittedTemplates", JSON.stringify(updated));
     setSubmittedTemplates(
@@ -92,7 +91,6 @@ const Dashboard: React.FC = () => {
     );
   };
 
-  // Static default templates to be shown always
   const defaultTemplates = [
     { id: "feedback", name: "Feedback Form" },
     { id: "registration", name: "Registration Form" },
@@ -101,24 +99,21 @@ const Dashboard: React.FC = () => {
 
   return (
     <div
-      className={`container-fluid py-4 min-vh-100 ${
+      className={`pb-4 min-vh-100 ${
         theme === "dark" ? "bg-dark-soft text-white" : "bg-light text-dark"
       }`}
     >
-      {/* Top Navbar */}
       <nav
-        className={`navbar navbar-expand-lg mb-5 px-3 py-3 rounded ${
+        className={`navbar navbar-expand-lg mb-3 px-3 py-3 shadow-sm ${
           theme === "dark" ? "bg-dark navbar-dark" : "bg-white navbar-light"
         }`}
       >
         <div className="container-fluid">
           <span className="navbar-brand fw-bold fs-3">Forms Dashboard</span>
           <div className="d-flex gap-2">
-            {/* Button to create a blank form */}
             <Link to="/form-builder">
               <button className="btn btn-outline-primary">+ Blank Form</button>
             </Link>
-            {/* Theme toggle button */}
             <button
               className={`btn ${
                 theme === "light" ? "btn-outline-dark" : "btn-outline-light"
@@ -127,7 +122,6 @@ const Dashboard: React.FC = () => {
             >
               Switch To {theme === "light" ? "Dark" : "Light"} Mode
             </button>
-            {/* Link to Trash page */}
             <Link to="/trash">
               <button className="btn btn-outline-danger">View Trash</button>
             </Link>
@@ -135,40 +129,45 @@ const Dashboard: React.FC = () => {
         </div>
       </nav>
 
-      {/* Section: Default Templates */}
-      <h4 className="mb-4">Start with a Template</h4>
-      <div className="row">
+      {/* Default Templates */}
+      <h4 className="px-4 py-4">Start with a Template</h4>
+      <div className="row px-3 py-3">
         {defaultTemplates.map((template) => (
-          <div className="col-md-4 mb-4" key={template.id}>
-            <Link
-              to={`/template/${template.id}`}
-              className="text-decoration-none"
+          <div className="col-md-4" key={template.id}>
+            <div
+              className={`card h-100 shadow-sm border-0 ${
+                theme === "dark" ? "bg-dark text-white" : "bg-white text-dark"
+              }`}
             >
-              <div
-                className={`card h-100 shadow-sm border-0 ${
-                  theme === "dark" ? "bg-dark text-white" : "bg-white text-dark"
-                }`}
-              >
-                <div className="card-body">
-                  <h5 className="card-title">{template.name}</h5>
-                  <p className="card-text">
-                    Start with a ready-made structure.
-                  </p>
+              <div className="card-body">
+                <h5 className="card-title">{template.name}</h5>
+                <p className="card-text">
+                  {template.name === "Feedback Form" &&
+                    "We’d love to hear your thoughts!"}
+                  {template.name === "Registration Form" &&
+                    "Tell us about yourself to get started!"}
+                  {template.name === "Survey Form" &&
+                    "Share your experience to help us get better!"}
+                </p>
+                <Link
+                  to={`/template/${template.id}`}
+                  className="text-decoration-none"
+                >
                   <button className="btn btn-outline-primary btn-sm">
                     Use Template
                   </button>
-                </div>
+                </Link>
               </div>
-            </Link>
+            </div>
           </div>
         ))}
       </div>
 
-      {/* Section: Your Saved Templates */}
+      {/* Saved Templates */}
       {savedTemplates.length > 0 && (
         <>
-          <h4 className="mt-5 mb-4">Your Saved Templates</h4>
-          <div className="row">
+          <h4 className="mt-5 mb-4 px-4 py-2">Your Saved Templates</h4>
+          <div className="row px-3 py-3">
             {savedTemplates.map((template) => (
               <div className="col-md-4 mb-4" key={template.id}>
                 <div
@@ -205,11 +204,11 @@ const Dashboard: React.FC = () => {
         </>
       )}
 
-      {/* Section: Submitted Templates */}
+      {/* Submitted Templates */}
       {submittedTemplates.length > 0 && (
         <>
-          <h4 className="mt-5 mb-4">Submitted Templates</h4>
-          <div className="row">
+          <h4 className="mt-5 mb-4 px-4 py-4">Submitted Templates</h4>
+          <div className="row mb-2 px-3 py-3">
             {submittedTemplates.map((submission) => (
               <div className="col-md-4 mb-4" key={submission.id}>
                 <div
@@ -249,11 +248,12 @@ const Dashboard: React.FC = () => {
         </>
       )}
 
-      {/* Section: Recent Forms */}
+      {/* Recent Forms */}
       <hr className="my-5" />
-      <h4 className="mb-3">Recent Forms</h4>
+      <h4 className="mb-3 px-4 py-3">Recent Forms</h4>
       {recentForms.length === 0 ? (
         <div
+          style={{ margin: "20px" }}
           className={`alert ${
             theme === "dark" ? "bg-dark text-light border-dark" : "alert-light"
           }`}
@@ -261,39 +261,26 @@ const Dashboard: React.FC = () => {
           No recent forms yet.
         </div>
       ) : (
-        <div className="row">
-          {recentForms.map((form) => (
-            <div className="col-md-4 mb-4" key={form.id}>
-              <div
-                className={`card h-100 shadow-sm border-0 ${
-                  theme === "dark" ? "bg-dark text-white" : "bg-white text-dark"
-                }`}
-              >
-                <div className="card-body d-flex flex-column justify-content-between">
-                  <div>
-                    <h5 className="card-title">{form.title}</h5>
-                    <p className="card-text">
-                      Submitted on: {new Date(form.timestamp).toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="d-flex justify-content-between mt-3">
-                    <Link
-                      to={`/view/${form.id}`}
-                      className="btn btn-sm btn-outline-primary"
-                    >
-                      Open
-                    </Link>
-                    <button
-                      className="btn btn-sm btn-outline-danger"
-                      onClick={() => softDeleteForm(form.id)}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
+        <div className="row px-3 py-3">
+          {recentForms.map((form) => {
+            const submission = submittedTemplates.find(
+              (s) => s.id === String(form.id)
+            );
+            return (
+              <div className="col-md-4 mb-4" key={form.id}>
+                <RecentFormCard
+                  form={{
+                    id: form.id,
+                    title: form.title,
+                    timestamp: form.timestamp,
+                    data: submission?.responses || {},
+                    fields: submission?.fields || [],
+                  }}
+                  onDelete={softDeleteForm}
+                />
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

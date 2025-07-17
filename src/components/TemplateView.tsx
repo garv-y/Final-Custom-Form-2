@@ -1,35 +1,31 @@
-// Import React and necessary hooks
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom"; // Used to get URL parameters and navigate between routes
-import { useTheme } from "./ThemeContext"; // Custom hook for light/dark theme handling
+import { useParams, useNavigate } from "react-router-dom";
+import { useTheme } from "./ThemeContext";
 
 // Interface defining the structure of a submitted template object
 interface SubmittedTemplate {
   id: string;
   title: string;
   submittedAt: string;
-  responses: Record<string, string | string[]>; // Submitted field responses
-  fields: any[]; // Form field structure (not used in this view)
+  responses: Record<string, string | string[]>;
+  fields: { id: string; label?: string; title?: string }[];
 }
 
-// TemplateView component definition
 const TemplateView: React.FC = () => {
-  const { id } = useParams<{ id: string }>(); // Get `id` from URL
-  const navigate = useNavigate(); // Hook for programmatic navigation
-  const { theme, toggleTheme } = useTheme(); // Get current theme and toggle function from context
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
 
-  const [form, setForm] = useState<SubmittedTemplate | null>(null); // Holds the currently viewed submitted form
+  const [form, setForm] = useState<SubmittedTemplate | null>(null);
 
-  // Fetch submitted form data from localStorage based on ID
   useEffect(() => {
     const saved = JSON.parse(
       localStorage.getItem("submittedTemplates") || "[]"
     );
-    const match = saved.find((f: SubmittedTemplate) => f.id === id); // Find matching submission
-    setForm(match || null); // Set form data or null if not found
+    const match = saved.find((f: SubmittedTemplate) => f.id === id);
+    setForm(match || null);
   }, [id]);
 
-  // If form not found, show error message
   if (!form) {
     return (
       <div
@@ -45,7 +41,6 @@ const TemplateView: React.FC = () => {
     );
   }
 
-  // If form is found, show form details
   return (
     <div
       className={`container py-5 min-vh-100 ${
@@ -91,11 +86,21 @@ const TemplateView: React.FC = () => {
             theme === "dark" ? "bg-dark-soft text-white" : "bg-light text-dark"
           }`}
         >
-          {JSON.stringify(form.responses, null, 2)}
+          {JSON.stringify(
+            Object.fromEntries(
+              Object.entries(form.responses).map(([id, value]) => {
+                const field = form.fields.find((f) => f.id === id);
+                const label = field?.label || field?.title || `Field ${id}`;
+                return [label, value];
+              })
+            ),
+            null,
+            2
+          )}
         </pre>
       </div>
     </div>
   );
 };
 
-export default TemplateView; // Export component for use in routes
+export default TemplateView;

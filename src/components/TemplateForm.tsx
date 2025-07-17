@@ -1,8 +1,5 @@
-// Component for rendering a form based on a selected template
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-
-// Import UI components and logic
 import FieldRenderer from "./FieldRenderer";
 import FieldBuilder from "./FieldBuilder";
 import { useTheme } from "./ThemeContext";
@@ -10,7 +7,6 @@ import { getTemplateFields } from "../utils/templateUtils";
 import type { Field, FieldConfig, FieldOption } from "../types/types";
 import FAB from "./FAB";
 
-// Import drag and drop utilities
 import {
   DragDropContext,
   Droppable,
@@ -19,22 +15,20 @@ import {
 } from "@hello-pangea/dnd";
 
 const TemplateForm: React.FC = () => {
-  const { id } = useParams<{ id: string }>(); // Get template ID from URL
-  const navigate = useNavigate(); // Hook for navigation
-  const { theme, toggleTheme } = useTheme(); // Access theme context
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
 
-  // State variables
   const [fields, setFields] = useState<Field[]>([]);
   const [formTitle, setFormTitle] = useState("Template Form");
   const [submittedData, setSubmittedData] = useState<
-    Record<string, string | string[]>
+    Record<string, string | string[] | Record<string, any>>
   >({});
   const [errors, setErrors] = useState<Record<string, boolean>>({});
   const [showAlert, setShowAlert] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [templateSaved, setTemplateSaved] = useState(false);
 
-  // Load fields from localStorage template based on ID
   useEffect(() => {
     if (id) {
       const loadedFields = getTemplateFields(id).map(
@@ -53,24 +47,28 @@ const TemplateForm: React.FC = () => {
     }
   }, [id]);
 
-  // Handle field input change
-  const handleInputChange = (fieldId: string, value: string | string[]) => {
+  const handleInputChange = (
+    fieldId: string,
+    value: string | string[] | Record<string, any>
+  ) => {
     setSubmittedData((prev) => ({ ...prev, [fieldId]: value }));
     setErrors((prev) => ({ ...prev, [fieldId]: false }));
   };
 
-  // Handle form submission
   const handleSubmit = () => {
     const newErrors: Record<string, boolean> = {};
 
-    // Validate required fields
     fields.forEach((field) => {
       if (field.required) {
         const val = submittedData[field.id];
         const isEmpty =
           val === undefined ||
           val === "" ||
-          (Array.isArray(val) && val.length === 0);
+          (Array.isArray(val) && val.length === 0) ||
+          (typeof val === "object" &&
+            !Array.isArray(val) &&
+            Object.keys(val).length === 0);
+
         if (isEmpty) newErrors[field.id] = true;
       }
     });
@@ -79,13 +77,18 @@ const TemplateForm: React.FC = () => {
 
     if (Object.keys(newErrors).length > 0) return;
 
-    // Save form data
+    // ✅ Ensure only id and label are stored with submission
+    const submissionFields = fields.map((f) => ({
+      id: f.id,
+      label: f.label || `Field ${f.id}`,
+    }));
+
     const formSubmission = {
       id: Date.now().toString(),
       title: formTitle,
       timestamp: new Date().toISOString(),
       responses: submittedData,
-      fields,
+      fields: submissionFields,
       isDeleted: false,
     };
 
@@ -102,7 +105,6 @@ const TemplateForm: React.FC = () => {
     navigate(`/view/${formSubmission.id}`);
   };
 
-  // Add a new field to the form
   const addField = (type: Field["type"]) => {
     const newField: Field = {
       id: Date.now().toString(),
@@ -119,7 +121,6 @@ const TemplateForm: React.FC = () => {
     setFields((prev) => [...prev, newField]);
   };
 
-  // Update an existing field
   const updateField = (updatedField: FieldConfig) => {
     setFields((prev) =>
       prev.map((f) =>
@@ -137,12 +138,10 @@ const TemplateForm: React.FC = () => {
     );
   };
 
-  // Delete a field by ID
   const deleteField = (id: string) => {
     setFields((prev) => prev.filter((f) => f.id !== id));
   };
 
-  // Save current fields as a new template
   const handleSaveAsNewTemplate = () => {
     if (fields.length === 0) {
       alert("Cannot save an empty template.");
@@ -168,7 +167,6 @@ const TemplateForm: React.FC = () => {
     }
   };
 
-  // Reorder fields after drag and drop
   const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return;
     const updated = [...fields];
@@ -183,7 +181,6 @@ const TemplateForm: React.FC = () => {
         theme === "dark" ? "bg-dark-soft text-white" : ""
       }`}
     >
-      {/* Top control buttons */}
       <div className="d-flex justify-content-center">
         <div
           className="w-100"
@@ -218,7 +215,6 @@ const TemplateForm: React.FC = () => {
             </div>
           </div>
 
-          {/* Render edit mode (drag and edit fields) */}
           {editMode ? (
             <DragDropContext onDragEnd={handleDragEnd}>
               <Droppable droppableId="fields-droppable">
@@ -259,27 +255,40 @@ const TemplateForm: React.FC = () => {
               </Droppable>
             </DragDropContext>
           ) : fields.length === 0 ? (
-            // No fields available
             <div className="alert alert-warning">
               No fields available in this template.
             </div>
           ) : (
-            // Render form fields in view mode
             <form
               onSubmit={(e) => {
                 e.preventDefault();
                 handleSubmit();
               }}
             >
-              {fields.map((field) => (
-                <FieldRenderer
-                  key={field.id}
-                  field={field}
-                  value={submittedData[field.id]}
-                  onChange={(val) => handleInputChange(field.id, val)}
-                  error={errors[field.id] || false}
-                />
-              ))}
+              {fields.map((field) => {
+                const value = submittedData[field.id];
+
+                // Section: value is an object (nested values)
+                // Others: ensure string or string[]
+                const safeValue =
+                  field.type === "section"
+                    ? typeof value === "object" && !Array.isArray(value)
+                      ? value
+                      : {}
+                    : typeof value === "string" || Array.isArray(value)
+                    ? value
+                    : "";
+
+                return (
+                  <FieldRenderer
+                    key={field.id}
+                    field={field}
+                    value={safeValue}
+                    onChange={(val) => handleInputChange(field.id, val)}
+                    error={errors[field.id] || false}
+                  />
+                );
+              })}
 
               <button type="submit" className="btn btn-outline-success mt-4">
                 Submit
@@ -287,7 +296,6 @@ const TemplateForm: React.FC = () => {
             </form>
           )}
 
-          {/* Save button shown only in edit mode */}
           {editMode && (
             <div className="mt-4">
               <button
@@ -299,7 +307,6 @@ const TemplateForm: React.FC = () => {
             </div>
           )}
 
-          {/* Alerts for submission or save success */}
           {showAlert && (
             <div className="alert alert-success mt-4">
               Form submitted and saved!
@@ -313,8 +320,7 @@ const TemplateForm: React.FC = () => {
         </div>
       </div>
 
-      {/* Floating action button for adding fields */}
-      {editMode && <FAB onAddField={addField} />}
+      {editMode && <FAB onAddField={addField} mode="add" />}
     </div>
   );
 };
